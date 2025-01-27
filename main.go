@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"math/rand"
 	"os"
 	"strconv"
 	"strings"
@@ -10,54 +11,67 @@ import (
 )
 
 func main() {
+	//Выводим все треки в начале программы и потом предлагаем выбор
+	allTracks()
+	vibor()
+}
+
+func allTracks() {
 	f, err := os.Open("Tracks.txt")
 	if err != nil {
 		panic(err)
 	}
 	defer f.Close()
+
 	fmt.Println("Список всех аудиозаписей в медиатеке: ")
-	time.Sleep(1 * time.Second) //имитация подключения к файлу и раздумья...
+	time.Sleep(1 * time.Second) //Имитация подключения к файлу и раздумья... (так красивее)
+
 	reader := bufio.NewReader(f)
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
 			break
 		}
-		processLine(line)
+		fmt.Print(line)
 	}
-	vibor()
 }
 
 func vibor() {
-	fmt.Println("\nВыберите действие:\n1.Добавить трек\n2.Выдать случайный трек\n3.Удалить трек\n4.Выход")
+	//Главное меню
+	fmt.Println("\nВыберите действие:\n1.Добавить трек\n2.Выдать случайный трек\n3.Удалить трек\n4.Вывести все треки\n5.Выход\n")
 	var choice int
 	fmt.Scan(&choice)
 
+	//Очистка буфера
 	reader := bufio.NewReader(os.Stdin)
 	reader.ReadString('\n')
 
+	//Пользователь выбирает, что ему интересно
 	switch choice {
 	case 1:
 		zapis()
+		prodolzhenie()
 	case 2:
-		fmt.Println("В разработке...\n")
-		time.Sleep(2 * time.Second)
-		vibor()
+		random()
+		prodolzhenie()
 	case 3:
-		fmt.Println("В разработке...\n")
+		fmt.Println("В разработке...")
 		time.Sleep(2 * time.Second)
 		vibor()
 	case 4:
+		allTracks()
+	case 5:
 		fmt.Println("Хорошего дня!")
 		time.Sleep(2 * time.Second)
 		return
 	default:
-		fmt.Println("Некорректный выбор\n")
+		fmt.Println("Некорректный выбор")
 		vibor()
 	}
 }
 
 func zapis() {
+	//Стандартное открытие файла, проверка и отложенное закрытие
 	filePath := "Tracks.txt"
 	f, err := os.Open(filePath)
 	if err != nil {
@@ -65,12 +79,17 @@ func zapis() {
 	}
 	defer f.Close()
 
+	//Читаем пользовательский ввод - название группы
 	fmt.Println("Введите имя исполнителя или название группы: ")
 	nameOfArtist, _ := bufio.NewReader(os.Stdin).ReadString('\n')
 	nameOfArtist = strings.TrimSpace(nameOfArtist)
+
+	//Читаем пользовательский ввод - трек
 	fmt.Println("Введите название трека: ")
 	trackName, _ := bufio.NewReader(os.Stdin).ReadString('\n')
 	trackName = strings.TrimSpace(trackName)
+
+	//Добавляем номер трека в начало, тире между треком и названием группы
 	lastTrackNumber, err := lastTrackNumber(filePath)
 	data := strconv.Itoa(lastTrackNumber+1) + ": " + nameOfArtist + " - " + trackName
 	f.WriteString(data)
@@ -80,30 +99,16 @@ func zapis() {
 		fmt.Println("Error:", err)
 		return
 	}
-	defer file.Close() // Закрываем файл в конце работы
+	defer file.Close()
 
 	// Добавляем текст в конец файла
-	_, err = file.WriteString(data + "\n") // Обязательно добавляем символ новой строки
+	_, err = file.WriteString(data + "\n")
 	if err != nil {
 		fmt.Println("Error:", err)
 		return
 	} else {
 		fmt.Println("Трек был успешно добавлен!\n")
 	}
-	fmt.Println("Вы хотите продолжить? (y/n)")
-	var choice string
-	fmt.Scan(&choice)
-	if choice == "y" {
-		vibor()
-	} else {
-		fmt.Println("Хорошего дня!")
-		time.Sleep(2 * time.Second)
-		return
-	}
-}
-
-func processLine(line string) {
-	fmt.Print(line) // Здесь можно добавить любую обработку строки
 }
 
 func lastTrackNumber(file string) (int, error) {
@@ -117,7 +122,6 @@ func lastTrackNumber(file string) (int, error) {
 	maxNumber := 0
 	for scanner.Scan() {
 		line := scanner.Text()
-		// Строка имеет вид "1: ..."
 		parts := strings.SplitN(line, ":", 2) // Разделяем строку на номер и название
 		if len(parts) < 2 {
 			continue // Если строка не содержит разделителя ":", пропускаем
@@ -138,10 +142,41 @@ func lastTrackNumber(file string) (int, error) {
 
 func random() {
 	filePath := "Tracks.txt"
-	lastTrackNumber, err := lastTrackNumber(filePath)
+	f, err := os.Open(filePath)
 	if err != nil {
 		panic(err)
 	}
+	defer f.Close()
 
-	fmt.Println()
+	var tracks []string
+	scanner := bufio.NewScanner(f)
+
+	for scanner.Scan() {
+		tracks = append(tracks, scanner.Text())
+	}
+	if err := scanner.Err(); err != nil {
+		fmt.Println("Ошибка при чтении файла:", err)
+		return
+	}
+	if len(tracks) == 0 {
+		fmt.Println("Медиатека пуста. Добавьте треки перед использованием функции случайного выбора.")
+		return
+	}
+	randomIndex := rand.Intn(len(tracks))
+	fmt.Println("\nСлучайный трек из медиатеки:")
+	fmt.Println(tracks[randomIndex])
+}
+
+func prodolzhenie() {
+	fmt.Println("Вы хотите продолжить? (y/n)")
+	var choice string
+	fmt.Scan(&choice)
+	if choice == "y" {
+		allTracks()
+		vibor()
+	} else {
+		fmt.Println("Хорошего дня!")
+		time.Sleep(2 * time.Second)
+		return
+	}
 }
