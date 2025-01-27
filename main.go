@@ -24,7 +24,7 @@ func allTracks() {
 	defer f.Close()
 
 	fmt.Println("Список всех аудиозаписей в медиатеке: ")
-	time.Sleep(1 * time.Second) //Имитация подключения к файлу и раздумья... (так красивее)
+	time.Sleep(1 * time.Second) //Имитация подключения к файлу и раздумья...
 
 	reader := bufio.NewReader(f)
 	for {
