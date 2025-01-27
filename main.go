@@ -135,3 +135,13 @@ func lastTrackNumber(file string) (int, error) {
 
 	return maxNumber, nil
 }
+
+func random() {
+	filePath := "Tracks.txt"
+	lastTrackNumber, err := lastTrackNumber(filePath)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println()
+}
