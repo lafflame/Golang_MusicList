@@ -16,26 +16,6 @@ func main() {
 	vibor()
 }
 
-func allTracks() {
-	f, err := os.Open("Tracks.txt")
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-
-	fmt.Println("Список всех аудиозаписей в медиатеке: ")
-	time.Sleep(1 * time.Second) //Имитация подключения к файлу и раздумья...
-
-	reader := bufio.NewReader(f)
-	for {
-		line, err := reader.ReadString('\n')
-		if err != nil {
-			break
-		}
-		fmt.Print(line)
-	}
-}
-
 func vibor() {
 	//Главное меню
 	fmt.Println("\nВыберите действие:\n1.Добавить трек\n2.Выдать случайный трек\n3.Удалить трек\n4.Вывести все треки\n5.Выход\n")
@@ -60,6 +40,7 @@ func vibor() {
 		vibor()
 	case 4:
 		allTracks()
+		prodolzhenie()
 	case 5:
 		fmt.Println("Хорошего дня!")
 		time.Sleep(2 * time.Second)
@@ -70,8 +51,28 @@ func vibor() {
 	}
 }
 
+func allTracks() {
+	//Стандартная работа с файлом и отложенное закрытие
+	f, err := os.Open("Tracks.txt")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	fmt.Println("Список всех аудиозаписей в медиатеке: ")
+	time.Sleep(2 * time.Second) //Имитация подключения к файлу и раздумья...
+	reader := bufio.NewReader(f)
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			break //Если не получается считать новую строку - значит все они закончились и цикл прекращается
+		}
+		fmt.Print(line)
+	}
+}
+
 func zapis() {
-	//Стандартное открытие файла, проверка и отложенное закрытие
+	//Стандартная работа с файлом и отложенное закрытие
 	filePath := "Tracks.txt"
 	f, err := os.Open(filePath)
 	if err != nil {
@@ -112,6 +113,7 @@ func zapis() {
 }
 
 func lastTrackNumber(file string) (int, error) {
+	//Стандартная работа с файлом и отложенное закрытие
 	f, err := os.Open("Tracks.txt")
 	if err != nil {
 		panic(err)
@@ -141,6 +143,7 @@ func lastTrackNumber(file string) (int, error) {
 }
 
 func random() {
+	//Стандартная работа с файлом и отложенное закрытие
 	filePath := "Tracks.txt"
 	f, err := os.Open(filePath)
 	if err != nil {
@@ -172,7 +175,6 @@ func prodolzhenie() {
 	var choice string
 	fmt.Scan(&choice)
 	if choice == "y" {
-		allTracks()
 		vibor()
 	} else {
 		fmt.Println("Хорошего дня!")
