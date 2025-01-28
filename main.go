@@ -170,6 +170,7 @@ func random() {
 	fmt.Println(tracks[randomIndex])
 }
 
+//Функция вопросник нужна, чтобы не запускать программу заново после каждого действия
 func prodolzhenie() {
 	fmt.Println("Вы хотите продолжить? (y/n)")
 	var choice string
