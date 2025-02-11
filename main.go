@@ -8,6 +8,8 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -22,7 +24,9 @@ func main() {
 // Выбор пользователем действий
 func vibor() {
 	//Главное меню
-	fmt.Println("\nВыберите действие:\n1.Добавить трек\n2.Выдать случайный трек\n3.Удалить трек\n4.Вывести все треки\n5.Выход\n")
+	fmt.Println("\nВыберите действие:\n1.Добавить трек\n2.Выдать случайный трек" +
+		"\n3.Удалить трек\n4.Вывести все треки\n5.Поиск трека\n6.Редактирование трека\n" +
+		"7.Поиск клипа на Youtube\n8.Выход")
 	var choice int
 	fmt.Scan(&choice)
 
@@ -37,16 +41,18 @@ func vibor() {
 	case 2:
 		random() //Выдать случайный трек
 	case 3:
-		fmt.Println("В разработке...") //Удалить трек
-		time.Sleep(2 * time.Second)
-		vibor()
+		deleteTrack() // Удаление трека
 	case 4:
 		allTracks() //Вывести все треки
 	case 5:
-		fmt.Println("Хорошего дня!") //Выход
-		return
+		searchTrack() // Поиск трека
 	case 6:
-		parsing()
+		editTrack() // Редактирование трека
+	case 7:
+		playYouTubeClip() // Открытие клипа
+	case 8:
+		fmt.Println("Хорошего дня!")
+		return
 	default:
 		fmt.Println("Некорректный выбор")
 		vibor()
@@ -187,6 +193,7 @@ func lastTrackNumber() (int, error) {
 	return maxNumber, nil
 }
 
+// TODO
 func gettingInfo(url string) {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -212,55 +219,231 @@ func gettingInfo(url string) {
 	fmt.Printf("Имя исполнителя: %s\n", artistName)
 }
 
-// Получение данных с библиотеки пользователя
-func parsing() {
-	var url string
-	fmt.Println("Введите URL с аудиозаписью (!URL должен открываться без авторизации!): ")
-	fmt.Scan(&url)
-	resp, err := http.Get(url)
-	if err != nil {
-		log.Fatal("При получении данных произошла ошибка."+
-			"\nУбедитесь, что медиатека общедоступна", err)
-	}
-	defer resp.Body.Close()
+// Открытие браузера и ссылки
+func openBrowser(url string) error {
+	var cmd string
+	var args []string
 
+	switch runtime.GOOS {
+	case "windows":
+		cmd = "cmd"
+		args = []string{"/c", "start"}
+	case "darwin":
+		cmd = "open"
+	default: // "linux", "freebsd", "openbsd", "netbsd"
+		cmd = "xdg-open"
+	}
+	args = append(args, url)
+
+	return exec.Command(cmd, args...).Start()
 }
 
-//package main
-//
-//import (
-//"fmt"
-//"log"
-//"net/http"
-//
-//"github.com/PuerkitoBio/goquery"
-//)
-//
-//func main() {
-//	// URL страницы с исполнителем на Яндекс.Музыке
-//	url := "https://music.yandex.ru/artist/3121" // Замените на нужный URL
-//
-//	// Выполняем HTTP GET запрос
-//	resp, err := http.Get(url)
-//	if err != nil {
-//		log.Fatal("Ошибка при выполнении запроса:", err)
-//	}
-//	defer resp.Body.Close()
-//
-//	// Проверяем статус ответа
-//	if resp.StatusCode != http.StatusOK {
-//		log.Fatalf("Ошибка: статус код %d", resp.StatusCode)
-//	}
-//
-//	// Парсим HTML-документ
-//	doc, err := goquery.NewDocumentFromReader(resp.Body)
-//	if err != nil {
-//		log.Fatal("Ошибка при парсинге HTML:", err)
-//	}
-//
-//	// Извлекаем имя исполнителя
-//	artistName := doc.Find("h1.page-artist__title").First().Text()
-//
-//	// Выводим результат
-//	fmt.Printf("Имя исполнителя: %s\n", artistName)
-//}
+// Поиск трека
+func searchTrack() {
+	fmt.Println("Введите название трека или имя исполнителя для поиска:")
+	reader := bufio.NewReader(os.Stdin)
+	query, _ := reader.ReadString('\n')
+	query = strings.TrimSpace(query)
+
+	// Открываем файл с треками
+	filePath := "Tracks.txt"
+	f, err := os.Open(filePath)
+	if err != nil {
+		fmt.Println("Ошибка при открытии файла:", err)
+		return
+	}
+	defer f.Close()
+
+	// Сканируем файл построчно
+	scanner := bufio.NewScanner(f)
+	found := false
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(strings.ToLower(line), strings.ToLower(query)) {
+			fmt.Println(line)
+			found = true
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Println("Ошибка при чтении файла:", err)
+		return
+	}
+
+	if !found {
+		fmt.Println("Трек не найден.")
+	}
+}
+
+func deleteTrack() {
+	fmt.Println("Введите номер трека для удаления:")
+	var trackNumber int
+	fmt.Scan(&trackNumber)
+
+	// Открываем файл с треками
+	filePath := "Tracks.txt"
+	f, err := os.Open(filePath)
+	if err != nil {
+		fmt.Println("Ошибка при открытии файла:", err)
+		return
+	}
+	defer f.Close()
+
+	// Читаем все строки из файла
+	var lines []string
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Println("Ошибка при чтении файла:", err)
+		return
+	}
+
+	// Ищем трек с указанным номером
+	found := false
+	var updatedLines []string
+	for _, line := range lines {
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) < 2 {
+			continue
+		}
+
+		// Пробуем преобразовать номер трека в число
+		number, err := strconv.Atoi(strings.TrimSpace(parts[0]))
+		if err != nil {
+			continue
+		}
+
+		// Если номер трека совпадает, пропускаем его (удаляем)
+		if number == trackNumber {
+			found = true
+			continue
+		}
+
+		// Добавляем строку в обновлённый список
+		updatedLines = append(updatedLines, line)
+	}
+
+	if !found {
+		fmt.Println("Трек с таким номером не найден.")
+		return
+	}
+
+	// Добавляем пустую строку в конец
+	updatedLines = append(updatedLines, "")
+
+	// Перезаписываем файл с обновлённым списком треков
+	err = os.WriteFile(filePath, []byte(strings.Join(updatedLines, "\n")), 0644)
+	if err != nil {
+		fmt.Println("Ошибка при записи файла:", err)
+		return
+	}
+
+	fmt.Println("Трек успешно удалён.")
+}
+
+// Изменение названия трека
+func editTrack() {
+	fmt.Println("Введите номер трека для редактирования:")
+	var trackNumber int
+	fmt.Scan(&trackNumber)
+
+	// Очистка буфера после `fmt.Scan`
+	reader := bufio.NewReader(os.Stdin)
+	reader.ReadString('\n')
+
+	// Открываем файл с треками
+	filePath := "Tracks.txt"
+	f, err := os.Open(filePath)
+	if err != nil {
+		fmt.Println("Ошибка при открытии файла:", err)
+		return
+	}
+	defer f.Close()
+
+	// Читаем все строки из файла
+	var lines []string
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Println("Ошибка при чтении файла:", err)
+		return
+	}
+
+	// Ищем трек с указанным номером
+	found := false
+	var updatedLines []string
+	for _, line := range lines {
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) < 2 {
+			continue
+		}
+
+		// Пробуем преобразовать номер трека в число
+		number, err := strconv.Atoi(strings.TrimSpace(parts[0]))
+		if err != nil {
+			continue
+		}
+
+		// Если номер трека совпадает, редактируем его
+		if number == trackNumber {
+			found = true
+			fmt.Println("Текущий трек:", line)
+			fmt.Println("Введите новое имя исполнителя:")
+			nameOfArtist, _ := reader.ReadString('\n')
+			nameOfArtist = strings.TrimSpace(nameOfArtist)
+
+			fmt.Println("Введите новое название трека:")
+			trackName, _ := reader.ReadString('\n')
+			trackName = strings.TrimSpace(trackName)
+
+			// Формируем новую строку для трека
+			newLine := strconv.Itoa(number) + ": " + nameOfArtist + " - " + trackName
+			updatedLines = append(updatedLines, newLine)
+		} else {
+			// Добавляем строку в обновлённый список без изменений
+			updatedLines = append(updatedLines, line)
+		}
+	}
+
+	if !found {
+		fmt.Println("Трек с таким номером не найден.")
+		return
+	}
+
+	// Перезаписываем файл с обновлённым списком треков
+	err = os.WriteFile(filePath, []byte(strings.Join(updatedLines, "\n")), 0644)
+	if err != nil {
+		fmt.Println("Ошибка при записи файла:", err)
+		return
+	}
+
+	fmt.Println("Трек успешно отредактирован.")
+}
+
+// Поиск трека на ютубе
+func playYouTubeClip() {
+	fmt.Println("Введите название трека или исполнителя для поиска на YouTube:")
+	reader := bufio.NewReader(os.Stdin)
+	query, _ := reader.ReadString('\n')
+	query = strings.TrimSpace(query)
+
+	if query == "" {
+		fmt.Println("Запрос не может быть пустым!")
+		return
+	}
+
+	// Формируем URL для поиска на YouTube
+	searchURL := "https://www.youtube.com/results?search_query=" + strings.ReplaceAll(query, " ", "+")
+
+	fmt.Println("Открываю YouTube...")
+	err := openBrowser(searchURL)
+	if err != nil {
+		fmt.Println("Ошибка при открытии браузера:", err)
+	}
+}
