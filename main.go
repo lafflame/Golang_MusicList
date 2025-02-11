@@ -3,7 +3,10 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/PuerkitoBio/goquery"
+	"log"
 	"math/rand"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -42,6 +45,8 @@ func vibor() {
 	case 5:
 		fmt.Println("Хорошего дня!") //Выход
 		return
+	case 6:
+		parsing()
 	default:
 		fmt.Println("Некорректный выбор")
 		vibor()
@@ -181,3 +186,81 @@ func lastTrackNumber() (int, error) {
 
 	return maxNumber, nil
 }
+
+func gettingInfo(url string) {
+	resp, err := http.Get(url)
+	if err != nil {
+		log.Fatal("Ошибка при выполнении запроса:", err)
+	}
+	defer resp.Body.Close()
+
+	// Проверяем статус ответа
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("Ошибка: статус код %d", resp.StatusCode)
+	}
+
+	// Парсим HTML-документ
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		log.Fatal("Ошибка при парсинге HTML:", err)
+	}
+
+	// Извлекаем имя исполнителя
+	artistName := doc.Find("h1.page-artist__title").First().Text()
+
+	// Выводим результат
+	fmt.Printf("Имя исполнителя: %s\n", artistName)
+}
+
+// Получение данных с библиотеки пользователя
+func parsing() {
+	var url string
+	fmt.Println("Введите URL с аудиозаписью (!URL должен открываться без авторизации!): ")
+	fmt.Scan(&url)
+	resp, err := http.Get(url)
+	if err != nil {
+		log.Fatal("При получении данных произошла ошибка."+
+			"\nУбедитесь, что медиатека общедоступна", err)
+	}
+	defer resp.Body.Close()
+
+}
+
+//package main
+//
+//import (
+//"fmt"
+//"log"
+//"net/http"
+//
+//"github.com/PuerkitoBio/goquery"
+//)
+//
+//func main() {
+//	// URL страницы с исполнителем на Яндекс.Музыке
+//	url := "https://music.yandex.ru/artist/3121" // Замените на нужный URL
+//
+//	// Выполняем HTTP GET запрос
+//	resp, err := http.Get(url)
+//	if err != nil {
+//		log.Fatal("Ошибка при выполнении запроса:", err)
+//	}
+//	defer resp.Body.Close()
+//
+//	// Проверяем статус ответа
+//	if resp.StatusCode != http.StatusOK {
+//		log.Fatalf("Ошибка: статус код %d", resp.StatusCode)
+//	}
+//
+//	// Парсим HTML-документ
+//	doc, err := goquery.NewDocumentFromReader(resp.Body)
+//	if err != nil {
+//		log.Fatal("Ошибка при парсинге HTML:", err)
+//	}
+//
+//	// Извлекаем имя исполнителя
+//	artistName := doc.Find("h1.page-artist__title").First().Text()
+//
+//	// Выводим результат
+//	fmt.Printf("Имя исполнителя: %s\n", artistName)
+//}
