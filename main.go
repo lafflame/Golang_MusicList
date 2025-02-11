@@ -12,7 +12,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"time"
 )
 
 // Выводим все треки в начале программы и потом предлагаем выбор
@@ -26,7 +25,7 @@ func vibor() {
 	//Главное меню
 	fmt.Println("\nВыберите действие:\n1.Добавить трек\n2.Выдать случайный трек" +
 		"\n3.Удалить трек\n4.Вывести все треки\n5.Поиск трека\n6.Редактирование трека\n" +
-		"7.Поиск клипа на Youtube\n8.Выход")
+		"7.Поиск клипа на Youtube\n8.Статистика в медиатеке\n9.Выход")
 	var choice int
 	fmt.Scan(&choice)
 
@@ -51,6 +50,10 @@ func vibor() {
 	case 7:
 		playYouTubeClip() // Открытие клипа
 	case 8:
+		showStatistics() // Статистика в медиатеке
+	case 9:
+		gettingInfo() // Секретная фича - парсинг (который блокируется сайтом)
+	case 10:
 		fmt.Println("Хорошего дня!")
 		return
 	default:
@@ -69,7 +72,6 @@ func prodolzhenie() {
 		vibor()
 	} else {
 		fmt.Println("Хорошего дня!")
-		time.Sleep(2 * time.Second)
 		return
 	}
 }
@@ -84,7 +86,6 @@ func allTracks() {
 	defer f.Close()
 
 	fmt.Println("Список всех аудиозаписей в медиатеке: ")
-	time.Sleep(2 * time.Second) //Имитация подключения к файлу и раздумья...
 	reader := bufio.NewReader(f)
 	for {
 		line, err := reader.ReadString('\n')
@@ -193,8 +194,10 @@ func lastTrackNumber() (int, error) {
 	return maxNumber, nil
 }
 
-// TODO
-func gettingInfo(url string) {
+// Парсинг
+func gettingInfo() {
+	url := "https://music.yandex.ru/artist/1426524"
+	// Выполняем HTTP-запрос
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Fatal("Ошибка при выполнении запроса:", err)
@@ -211,12 +214,10 @@ func gettingInfo(url string) {
 	if err != nil {
 		log.Fatal("Ошибка при парсинге HTML:", err)
 	}
+	// Извлекаем название трека
+	trackName := doc.Find("h1.page-artist__title").Text()
+	fmt.Println(trackName)
 
-	// Извлекаем имя исполнителя
-	artistName := doc.Find("h1.page-artist__title").First().Text()
-
-	// Выводим результат
-	fmt.Printf("Имя исполнителя: %s\n", artistName)
 }
 
 // Открытие браузера и ссылки
@@ -445,5 +446,74 @@ func playYouTubeClip() {
 	err := openBrowser(searchURL)
 	if err != nil {
 		fmt.Println("Ошибка при открытии браузера:", err)
+	}
+}
+
+// Функция для вывода статистики по трекам
+func showStatistics() {
+	// Открываем файл с треками
+	filePath := "Tracks.txt"
+	f, err := os.Open(filePath)
+	if err != nil {
+		fmt.Println("Ошибка при открытии файла:", err)
+		return
+	}
+	defer f.Close()
+
+	// Сканируем файл построчно
+	scanner := bufio.NewScanner(f)
+	trackCount := 0
+	artistCounts := make(map[string]int) // Мапа для подсчета треков по исполнителям
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		trackCount++
+
+		// Разделяем строку на части: номер, исполнитель и название трека
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) < 2 {
+			continue
+		}
+
+		// Извлекаем имя исполнителя
+		trackInfo := strings.SplitN(parts[1], "-", 2)
+		if len(trackInfo) < 2 {
+			continue
+		}
+		artist := strings.TrimSpace(trackInfo[0])
+
+		// Увеличиваем счетчик для текущего исполнителя
+		artistCounts[artist]++
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Println("Ошибка при чтении файла:", err)
+		return
+	}
+
+	// Выводим общую статистику
+	fmt.Println("\nСтатистика медиатеки:")
+	fmt.Printf("Общее количество треков: %d\n", trackCount)
+
+	// Выводим количество треков по каждому исполнителю
+	fmt.Println("\nКоличество треков по исполнителям:")
+	for artist, count := range artistCounts {
+		fmt.Printf("%s: %d треков\n", artist, count)
+	}
+
+	// Находим самого популярного исполнителя
+	maxCount := 0
+	popularArtist := ""
+	for artist, count := range artistCounts {
+		if count > maxCount {
+			maxCount = count
+			popularArtist = artist
+		}
+	}
+
+	if popularArtist != "" {
+		fmt.Printf("\nСамый популярный исполнитель: %s (%d треков)\n", popularArtist, maxCount)
+	} else {
+		fmt.Println("\nНет данных о самом популярном исполнителе.")
 	}
 }
